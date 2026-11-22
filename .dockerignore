@@ -1,0 +1,8 @@
+.git
+.gitignore
+downloads
+.tools
+.work
+__pycache__
+*.mp4
+*.ts

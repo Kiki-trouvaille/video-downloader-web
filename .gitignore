@@ -1,0 +1,21 @@
+# 运行产物
+downloads/
+.tools/
+.work/
+*.mp4
+*.m4a
+*.ts
+*.part
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 系统与编辑器
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

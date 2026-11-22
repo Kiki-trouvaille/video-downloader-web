@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>视频下载器</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --line:#e6e8ec; --text:#1b1f26; --sub:#6b7280;
+    --brand:#2563eb; --brand-soft:#eff4ff; --ok:#15803d; --ok-soft:#eaf7ee;
+    --err:#b91c1c; --err-soft:#fdecec; --warn:#a16207; --warn-soft:#fdf6e3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+  header h1{margin:0 0 6px;font-size:22px;font-weight:650;letter-spacing:-.2px}
+  header p{margin:0;color:var(--sub);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:18px;margin-top:16px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  label{display:block;font-size:12px;font-weight:600;color:var(--sub);
+    letter-spacing:.02em;margin-bottom:6px}
+  textarea{width:100%;min-height:96px;resize:vertical;padding:11px 12px;
+    border:1px solid var(--line);border-radius:9px;font:inherit;color:inherit;
+    background:#fcfcfd;outline:none;transition:border-color .15s,box-shadow .15s}
+  textarea:focus,input:focus,select:focus{border-color:#a9c0f5;box-shadow:0 0 0 3px var(--brand-soft)}
+  input,select{width:100%;padding:9px 11px;border:1px solid var(--line);
+    border-radius:9px;font:inherit;color:inherit;background:#fcfcfd;outline:none}
+  .row{display:grid;grid-template-columns:1fr 170px 170px;gap:12px;margin-top:12px}
+  @media(max-width:700px){.row{grid-template-columns:1fr}}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+  button{cursor:pointer;font:inherit;border-radius:9px;border:1px solid var(--line);
+    background:#fff;padding:9px 15px;color:var(--text);transition:.15s}
+  button:hover{background:#f3f4f6}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600;padding:10px 20px}
+  button.primary:hover{filter:brightness(1.06)}
+  button.primary:disabled{opacity:.5;cursor:not-allowed}
+  button.tiny{padding:4px 9px;font-size:12px;border-radius:7px}
+  .hint{color:var(--sub);font-size:12px}
+  .banner{margin-top:14px;padding:10px 12px;border-radius:9px;font-size:12.5px;
+    background:var(--warn-soft);color:var(--warn);border:1px solid #f0e0b8}
+  .banner.ok{background:var(--ok-soft);color:var(--ok);border-color:#cbe8d4}
+  .job{border:1px solid var(--line);border-radius:11px;padding:14px;margin-top:12px;background:#fff}
+  .job .top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+  .u{font-size:12.5px;color:var(--sub);word-break:break-all;line-height:1.5}
+  .pill{flex:none;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;
+    background:#f1f3f6;color:#4b5563;white-space:nowrap}
+  .pill.running{background:var(--brand-soft);color:var(--brand)}
+  .pill.done{background:var(--ok-soft);color:var(--ok)}
+  .pill.error{background:var(--err-soft);color:var(--err)}
+  .pill.queued{background:var(--warn-soft);color:var(--warn)}
+  .bar{height:5px;background:#eef0f4;border-radius:4px;overflow:hidden;margin:11px 0 4px}
+  .bar > i{display:block;height:100%;width:0;background:var(--brand);
+    border-radius:4px;transition:width .4s ease}
+  .bar.done > i{background:var(--ok)}
+  .bar.error > i{background:var(--err)}
+  .meta{display:flex;gap:14px;font-size:12px;color:var(--sub);flex-wrap:wrap;margin-top:6px}
+  .jobactions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+  a.dl{text-decoration:none;background:var(--ok);color:#fff;padding:8px 16px;
+    border-radius:9px;font-weight:600;font-size:13px}
+  a.dl:hover{filter:brightness(1.06)}
+  pre.log{margin:12px 0 0;background:#0f1420;color:#c9d4e5;border-radius:9px;
+    padding:11px 12px;font:12px/1.55 ui-monospace,Consolas,monospace;
+    max-height:230px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  video{width:100%;max-height:360px;margin-top:12px;border-radius:10px;background:#000}
+  .empty{color:var(--sub);font-size:13px;text-align:center;padding:26px 0}
+  .foot{margin-top:26px;color:var(--sub);font-size:12px;line-height:1.8}
+  code{background:#f1f3f6;padding:1px 5px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>视频下载器</h1>
+    <p>粘贴视频链接（页面链接或 m3u8 直链都行），自动挑最高画质，无损封装为 MP4。</p>
+  </header>
+
+  <div class="card">
+    <label for="urls">视频链接（一行一个，可批量）</label>
+    <textarea id="urls" placeholder="https://www.bbc.co.uk/learningenglish/english/features/real-easy-english/261113
+https://www.bilibili.com/video/BV1xx411c7mD
+http://xxx.akamaized.net/.../playlist.m3u8"></textarea>
+    <div class="row">
+      <div>
+        <label for="name">文件名（可选，仅单个链接时生效）</label>
+        <input id="name" placeholder="留空则按站点标题自动命名">
+      </div>
+      <div>
+        <label for="quality">画质</label>
+        <select id="quality">
+          <option value="max">最高（默认）</option>
+          <option value="1080">1080p 以内</option>
+          <option value="720">720p 以内</option>
+          <option value="480">480p 以内</option>
+          <option value="audio">仅音频</option>
+        </select>
+      </div>
+      <div>
+        <label>成品目录</label>
+        <input id="dl" readonly>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="go">开始下载</button>
+      <span class="hint" id="tip">支持 HLS 分片自动解码、断点续传、并发下载</span>
+    </div>
+    <div id="banner" class="banner">正在检查运行环境…</div>
+  </div>
+
+  <div id="jobs"></div>
+
+  <div class="foot">
+    下载在服务端完成后由浏览器取回；文件同时保留在成品目录。<br>
+    需要登录/地区限制的站点，请先在服务端配置代理（环境变量 <code>VDL_PROXY</code>）。
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const jobsEl = $('#jobs'), bannerEl = $('#banner');
+let health = null;
+const seen = new Set();
+
+async function jget(u){ const r = await fetch(u, {cache:'no-store'}); return r.json(); }
+async function jpost(u, body){
+  const r = await fetch(u, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body||{})});
+  return r.json();
+}
+
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function mb(n){ return n ? (n/1048576).toFixed(1)+' MB' : '—'; }
+
+async function loadHealth(){
+  try{
+    health = await jget('/api/health');
+    $('#dl').value = health.downloads || '';
+    if (health.ready){
+      bannerEl.className = 'banner ok';
+      bannerEl.textContent = `环境就绪 · ffmpeg ✓ · yt-dlp ✓ · 并发 ${health.parallel} · 代理 ${health.proxy}`;
+    } else {
+      bannerEl.className = 'banner';
+      bannerEl.innerHTML = '环境不完整：' +
+        (health.bash ? '' : '缺少 bash（Windows 请装 Git for Windows） ') +
+        (health.ffmpeg ? '' : '缺少 ffmpeg ') + (health.ytdlp ? '' : '缺少 yt-dlp') +
+        ' — 执行 <code>bash scripts/setup.sh</code> 安装';
+    }
+  }catch(e){
+    bannerEl.className = 'banner';
+    bannerEl.textContent = '无法连接服务端：' + e.message;
+  }
+}
+
+function jobHtml(j){
+  const st = j.status;
+  const label = {queued:'排队中', running:'下载中', done:'已完成', error:'失败', cancelled:'已取消'}[st] || st;
+  const pct = st === 'done' ? 100 : (j.progress || 0);
+  const parts = [];
+  parts.push(`<div class="job" data-id="${j.id}">
+    <div class="top">
+      <div class="u">${esc(j.url)}</div>
+      <span class="pill ${st}">${label}</span>
+    </div>
+    <div class="bar ${st === 'done' ? 'done' : (st === 'error' ? 'error' : '')}">
+      <i style="width:${pct}%"></i>
+    </div>
+    <div class="meta">
+      <span>${pct.toFixed(0)}%</span>
+      <span>${j.filename ? esc(j.filename) : '—'}</span>
+      <span>${mb(j.size)}</span>
+      <span>${j.elapsed}s</span>
+    </div>`);
+
+  const acts = [];
+  if (st === 'done'){
+    acts.push(`<a class="dl" href="/api/jobs/${j.id}/file" download>下载文件</a>`);
+    acts.push(`<button class="tiny" data-act="preview">预览</button>`);
+    acts.push(`<button class="tiny" data-act="log">日志</button>`);
+    acts.push(`<button class="tiny" data-act="del">删除</button>`);
+  } else if (st === 'running' || st === 'queued'){
+    acts.push(`<button class="tiny" data-act="cancel">取消</button>`);
+    acts.push(`<button class="tiny" data-act="log">日志</button>`);
+  } else {
+    acts.push(`<button class="tiny" data-act="log">查看日志</button>`);
+    acts.push(`<button class="tiny" data-act="del">删除</button>`);
+    if (j.error) acts.push(`<span class="hint" style="color:var(--err)">${esc(j.error)}</span>`);
+  }
+  parts.push(`<div class="jobactions">${acts.join('')}</div>`);
+  parts.push(`<div class="preview"></div>`);
+  parts.push(`<pre class="log" style="display:none">${esc((j.log||[]).join('\n'))}</pre>`);
+  parts.push(`</div>`);
+  return parts.join('');
+}
+
+function render(list){
+  if (!list.length){ jobsEl.innerHTML = '<div class="empty">还没有任务，粘贴链接后点「开始下载」。</div>'; return; }
+  const prevLog = {};
+  const prevPrev = {};
+  document.querySelectorAll('.job').forEach(el => {
+    const log = el.querySelector('.log');
+    if (log && log.style.display !== 'none') prevLog[el.dataset.id] = true;
+    const pv = el.querySelector('.preview');
+    if (pv && pv.style.display !== 'none') prevPrev[el.dataset.id] = true;
+  });
+  jobsEl.innerHTML = list.map(jobHtml).join('');
+  document.querySelectorAll('.job').forEach(el => {
+    const id = el.dataset.id;
+    if (prevLog[id]) el.querySelector('.log').style.display = '';
+    if (prevPrev[id]) makePreview(el, id);
+  });
+}
+
+function makePreview(el, id){
+  const pv = el.querySelector('.preview');
+  pv.style.display = '';
+  if (!pv.querySelector('video')){
+    pv.innerHTML = `<video controls preload="metadata" src="/api/jobs/${id}/file"></video>`;
+  }
+}
+
+jobsEl.addEventListener('click', async ev => {
+  const btn = ev.target.closest('button[data-act]');
+  if (!btn) return;
+  const el = btn.closest('.job'), id = el.dataset.id, act = btn.dataset.act;
+  if (act === 'log'){
+    const log = el.querySelector('.log');
+    log.style.display = log.style.display === 'none' ? '' : 'none';
+  } else if (act === 'preview'){
+    const pv = el.querySelector('.preview');
+    if (pv.style.display === 'none'){ makePreview(el, id); }
+    else { pv.style.display = 'none'; pv.innerHTML = ''; }
+  } else if (act === 'cancel'){
+    await jpost(`/api/jobs/${id}/cancel`); poll();
+  } else if (act === 'del'){
+    if (confirm('删除任务记录和已下载的文件？')) {
+      await fetch(`/api/jobs/${id}`, {method:'DELETE'}); poll();
+    }
+  }
+});
+
+let timer = null, lastJobs = [];
+async function poll(){
+  try{
+    const d = await jget('/api/jobs');
+    const list = d.jobs || [];
+    // 有变化才重绘，避免日志滚动被打断
+    const sig = list.map(j => `${j.id}:${j.status}:${j.progress}:${j.size}:${j.filename}`).join('|');
+    if (sig !== lastJobs.sig){ lastJobs.sig = sig; render(list); }
+    const busy = list.some(j => j.status === 'running' || j.status === 'queued');
+    btn.disabled = false;
+    clearTimeout(timer);
+    timer = setTimeout(poll, busy ? 1000 : 3000);
+  }catch(e){ clearTimeout(timer); timer = setTimeout(poll, 3000); }
+}
+
+const btn = $('#go');
+btn.addEventListener('click', async () => {
+  const urls = $('#urls').value.trim();
+  if (!urls){ $('#urls').focus(); return; }
+  btn.disabled = true;
+  const r = await jpost('/api/jobs', {urls, quality: $('#quality').value, name: $('#name').value.trim()});
+  btn.disabled = false;
+  if (r.error){ alert(r.error); return; }
+  lastJobs.sig = null;
+  poll();
+});
+$('#urls').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') btn.click();
+});
+
+loadHealth().then(poll);
+</script>
+</body>
+</html>

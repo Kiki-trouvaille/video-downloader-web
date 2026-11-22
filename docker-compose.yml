@@ -1,0 +1,13 @@
+services:
+  video-downloader:
+    build: .
+    container_name: video-downloader
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./downloads:/downloads
+    environment:
+      # 目标站点需要代理时填这里；本机代理用 host.docker.internal
+      VDL_PROXY: ""
+      MAX_PARALLEL: "2"
+    restart: unless-stopped
