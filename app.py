@@ -151,6 +151,32 @@ def newest_media(since: float, prefer: str = "") -> str | None:
     return os.path.join(DL_DIR, fn)
 
 
+def cleanup_work() -> int:
+    """清理分片临时目录，返回释放的字节数。只动本工具自己生成的条目。"""
+    freed = 0
+    if not os.path.isdir(WORK_DIR):
+        return 0
+    for name in os.listdir(WORK_DIR):
+        p = os.path.join(WORK_DIR, name)
+        if not (name.startswith("seg_") or name.startswith("probe_") or name == "merged.ts"):
+            continue  # 不是本工具产生的，不碰
+        try:
+            if os.path.isdir(p):
+                for root, _dirs, files in os.walk(p):
+                    for f in files:
+                        try:
+                            freed += os.path.getsize(os.path.join(root, f))
+                        except OSError:
+                            pass
+                shutil.rmtree(p, ignore_errors=True)
+            else:
+                freed += os.path.getsize(p)
+                os.remove(p)
+        except OSError:
+            pass
+    return freed
+
+
 def kill_tree(pid: int) -> None:
     """只 terminate bash 的话，被它拉起的 curl/ffmpeg 会继续跑完并留下半成品。"""
     try:
@@ -399,6 +425,11 @@ class Handler(BaseHTTPRequestHandler):
             jobs = [public_view(create_job(u, quality, name if len(urls) == 1 else ""), with_log=False)
                     for u in urls[:20]]
             return self._json(200, {"jobs": jobs})
+        if path == "/api/cleanup":
+            busy = any(j["status"] in ("running", "queued") for j in JOBS.values())
+            if busy:
+                return self._json(409, {"error": "有任务正在跑，稍后再清理"})
+            return self._json(200, {"ok": True, "freed": cleanup_work()})
         m = re.fullmatch(r"/api/jobs/([0-9a-f]{12})/cancel", path)
         if m:
             job = JOBS.get(m.group(1))

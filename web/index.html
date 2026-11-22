@@ -111,7 +111,8 @@ http://xxx.akamaized.net/.../playlist.m3u8"></textarea>
 
   <div class="foot">
     下载在服务端完成后由浏览器取回；文件同时保留在成品目录。<br>
-    需要登录/地区限制的站点，请先在服务端配置代理（环境变量 <code>VDL_PROXY</code>）。
+    需要登录/地区限制的站点，请先在服务端配置代理（环境变量 <code>VDL_PROXY</code>）。<br>
+    <button class="tiny" id="clean" style="margin-top:8px">清理临时分片</button>
   </div>
 </div>
 
@@ -268,6 +269,12 @@ btn.addEventListener('click', async () => {
 });
 $('#urls').addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') btn.click();
+});
+
+$('#clean').addEventListener('click', async () => {
+  if (!confirm('清理分片临时目录？正在下载的任务会被拒绝清理，成品文件不受影响。')) return;
+  const r = await jpost('/api/cleanup');
+  alert(r.error ? r.error : `已释放 ${(r.freed/1048576).toFixed(0)} MB`);
 });
 
 loadHealth().then(poll);
